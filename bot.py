@@ -6,6 +6,8 @@ import socket
 import paramiko
 import csv
 import threading
+import argparse
+import logging
 from telepot.loop import MessageLoop
 
 # status dictionary, stores info about hosts and availability
@@ -30,10 +32,11 @@ def host_status(ip_port):
 # this method handles Telegram messages
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
-    print("Got new Telegram message: {chat_type}, chat_id {chat_id}, text \"{text}\"".format(
+    print("{time}: Got new Telegram message: {chat_type}, chat_id {chat_id}, text \"{text}\"".format(
         chat_id=chat_id,
         chat_type=chat_type,
-        text=msg['text']
+        text=msg['text'],
+        time=str(datetime.now())
     ))
 
     if ((chat_type == 'private' and msg['text'] == '/status') or
@@ -77,24 +80,28 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                             port=int(line['local_port']),
                             username='kbi_ssh_checker',
                             password='wrong_password')
-                    # fail, host is unavailable
-                    except (socket.error) as e:
-                        print("{local_ip}:{local_port} -- Resource unavailable ({i})".format(
-                            local_ip=line['local_ip'],
-                            local_port=line['local_port'],
-                            i=i
-                        ))
-                        time.sleep(15)
                     # success, host is reachable because we've got auth exception
                     except paramiko.ssh_exception.AuthenticationException:
-                        print("{local_ip}:{local_port} -- OK".format(
+                        print("{time}: [{comment}] {local_ip}:{local_port} -- OK".format(
                             local_ip=line['local_ip'],
-                            local_port=line['local_port']
+                            local_port=line['local_port'],
+                            time=str(datetime.now()),
+                            comment=line['comment']
                         ))
                         available = True
                         break
+                    # fail, host is unavailable
+                    except:
+                        print("{time}: [{comment}] {local_ip}:{local_port} -- Resource unavailable ({i})".format(
+                            local_ip=line['local_ip'],
+                            local_port=line['local_port'],
+                            i=i+1,
+                            time=str(datetime.now()),
+                            comment=line['comment']
+                        ))
+                        time.sleep(10)
 
-				# key for status dictionary
+                # key for status dictionary
                 ip_port = '{ip}:{port}'.format(ip=line['local_ip'],
                     port=line['local_port'])
                 # create if key is not present
@@ -114,19 +121,25 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                 status[ip_port]['remote_port'] = line['remote_port']
                 status[ip_port]['comment'] = line['comment']
                 # notify admins if status have changed
-                if last_available and available != last_available:
+                if last_available is not None and available != last_available:
                     notify(ip_port)
         time.sleep(sleep)
 
-TOKEN = sys.argv[1]  # get token from command-line
+parser = argparse.ArgumentParser(description='Checks SSH availability.')
+parser.add_argument('telegram_token', type=str,
+                    help='Telegram Bot API token')
+parser.add_argument('-s', '--sleep', metavar='SEC', type=int, default=300,
+                    help='sleep between checks in seconds')
+args = parser.parse_args()
 
 # start Telegram listener
-bot = telepot.Bot(TOKEN)
+bot = telepot.Bot(args.telegram_token)
 MessageLoop(bot, handle).run_as_thread()
 print ('Listening for queries in Telegram...')
 
 # start SSH checker
-thr = threading.Thread(target=ssh_checker, args=())
+logging.getLogger("paramiko").setLevel(logging.CRITICAL)
+thr = threading.Thread(target=ssh_checker, args=(args.sleep, ))
 thr.run()
 
 # keep the program running

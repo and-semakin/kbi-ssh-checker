@@ -5,7 +5,9 @@ local_ip;local_port;remote_ip;remote_port;comment
 192.168.100.19;22152;172.153.153.152;22;Chelyabinsk via ViPNet
 192.168.100.19;22153;172.153.153.153;22;Chelyabinsk via ViPNet
 192.168.100.19;22154;172.153.153.154;22;Chelyabinsk via ViPNet
+192.168.100.19;22028;192.168.137.28;22;Kursk via OpenVPN
 192.168.100.18;22;10.12.158.27;22;Tyumen via Cisco VPN
 192.168.100.18;2211;10.12.156.11;22;Tyumen via Cisco VPN
 192.168.100.22;22073;10.0.9.73;22;Ekaterinburg via PPTP
 192.168.100.22;22074;10.0.9.74;22;Ekaterinburg via PPTP
+192.168.100.22;22082;10.11.128.82;22;Tatarstan via PPTP
