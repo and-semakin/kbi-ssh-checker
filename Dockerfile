@@ -1,5 +1,5 @@
-FROM python:3-alpine
-ADD ssh-checker /ssh-checker
-WORKDIR "/ssh-checker"
-RUN pip install -r requirements.txt
-CMD [ "python", "bot.py <paste-telegram-token-here> -s 300" ]
+FROM python:3.6.3-slim-jessie
+WORKDIR "/usr/src/app"
+ADD ssh-checker .
+RUN pip install --no-cache-dir -r requirements.txt
+CMD [ "python", "bot.py", "<paste-your-telegram-bot-api-token-here>", "-s300" ]
