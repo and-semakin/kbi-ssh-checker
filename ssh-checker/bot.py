@@ -1,8 +1,7 @@
-import sys
+import os
 import time
 from datetime import datetime
 import telepot
-import socket
 import paramiko
 import csv
 import threading
@@ -12,6 +11,7 @@ from telepot.loop import MessageLoop
 
 # status dictionary, stores info about hosts and availability
 status = {}
+
 
 # format host status
 def host_status(ip_port):
@@ -28,6 +28,7 @@ def host_status(ip_port):
         last_seen=data['last_seen'],
     )
     return text
+
 
 # this method handles Telegram messages
 def handle(msg):
@@ -47,6 +48,7 @@ def handle(msg):
             text += host_status(ip_port)
         bot.sendMessage(chat_id, text, parse_mode='Markdown')
 
+
 # this method notifies Telegram users if any host became available or vice versa
 def notify(ip_port, admins_info="admins.csv"):
     text = "Status of following hosts has been changed:\n"
@@ -56,6 +58,7 @@ def notify(ip_port, admins_info="admins.csv"):
         for line in reader:
             bot.sendMessage(line['chat_id'], text, parse_mode='Markdown')
             time.sleep(5)
+
 
 # this method runs in separate thread and check SSH hosts for availability
 def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
@@ -125,17 +128,31 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                     notify(ip_port)
         time.sleep(sleep)
 
+
+def set_telepot_socks_proxy(url, username=None, password=None):
+    from urllib3.contrib.socks import SOCKSProxyManager
+    from telepot.api import _default_pool_params, _onetime_pool_params
+    telepot.api._onetime_pool_spec = (SOCKSProxyManager, dict(proxy_url=url, username=username, password=password, **_onetime_pool_params))
+    telepot.api._pools['default'] = SOCKSProxyManager(url, username=username, password=password, **_default_pool_params)
+
+
+if 'SOCKS_URL' in os.environ:
+    set_telepot_socks_proxy(os.environ['SOCKS_URL'],
+                            username=os.environ['SOCKS_USERNAME'],
+                            password=os.environ['SOCKS_PASSWORD'])
+
 parser = argparse.ArgumentParser(description='Checks SSH availability.')
-parser.add_argument('telegram_token', type=str,
+parser.add_argument('-t', '--token', type=str,
                     help='Telegram Bot API token')
 parser.add_argument('-s', '--sleep', metavar='SEC', type=int, default=300,
                     help='sleep between checks in seconds')
 args = parser.parse_args()
+token = os.environ['TELEGRAM_TOKEN'] if 'TELEGRAM_TOKEN' in os.environ else args.telegram_token
 
 # start Telegram listener
-bot = telepot.Bot(args.telegram_token)
+bot = telepot.Bot(token)
+print('Listening for queries in Telegram...')
 MessageLoop(bot, handle).run_as_thread()
-print ('Listening for queries in Telegram...')
 
 # start SSH checker
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)

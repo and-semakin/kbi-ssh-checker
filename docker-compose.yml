@@ -4,6 +4,11 @@ services:
     image: ssh-checker
     build:
       context: .
+    environment:
+      - "TELEGRAM_TOKEN=<paste_your_token_here>"
+      - "SOCKS_URL=<paste_your_proxy_url>"
+      - "SOCKS_USERNAME=<paste_your_proxy_username>"
+      - "SOCKS_PASSWORD=<paste_your_proxy_password>"
     container_name: kbi-ssh-checker
     volumes:
       - ./ssh-checker:/ssh-checker/
