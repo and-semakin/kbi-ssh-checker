@@ -1,0 +1,15 @@
+version: '3'
+services:
+  ssh-checker:
+    image: ssh-checker
+    build:
+      context: .
+    container_name: kbi-ssh-checker
+    volumes:
+      - ./ssh-checker:/ssh-checker/
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  ssh-checker:
