@@ -8,9 +8,25 @@ import threading
 import argparse
 import logging
 from telepot.loop import MessageLoop
+from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 # status dictionary, stores info about hosts and availability
 status = {}
+
+
+# bot send message method to handle exceptions
+def bot_send_message(bot, *args, **kwargs):
+    try:
+        bot.sendMessage(*args, **kwargs, parse_mode='Markdown')
+    except (ReadTimeoutError, ProtocolError) as e:
+        print("{time}: Exception {type}: {message}".format(
+            type=type(e),
+            message=e.message,
+            time=str(datetime.now())
+        ))
+        # try again
+        time.sleep(5)
+        bot.sendMessage(*args, **kwargs, parse_mode='Markdown')
 
 
 # format host status
@@ -46,7 +62,7 @@ def handle(msg):
         text = "Current status:\n"
         for ip_port in status:
             text += host_status(ip_port)
-        bot.sendMessage(chat_id, text, parse_mode='Markdown')
+        bot_send_message(bot, chat_id, text)
 
 
 # this method notifies Telegram users if any host became available or vice versa
@@ -56,7 +72,7 @@ def notify(ip_port, admins_info="admins.csv"):
     with open(admins_info, newline='') as file:
         reader = csv.DictReader(file, delimiter=';')
         for line in reader:
-            bot.sendMessage(line['chat_id'], text, parse_mode='Markdown')
+            bot_send_message(bot, line['chat_id'], text)
             time.sleep(5)
 
 
