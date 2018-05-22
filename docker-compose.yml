@@ -5,6 +5,7 @@ services:
     build:
       context: .
     environment:
+      - "TZ=Asia/Yekaterinburg"
       - "TELEGRAM_TOKEN=<paste_your_token_here>"
       - "SOCKS_URL=<paste_your_proxy_url>"
       - "SOCKS_USERNAME=<paste_your_proxy_username>"
