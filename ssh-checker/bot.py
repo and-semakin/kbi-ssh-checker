@@ -53,8 +53,8 @@ def host_status(ip_port):
         remote_port=data['remote_port'],
         sign="✅" if data['available'] else "⚠️",
         comment=data['comment'],
-        last_checked=data['last_checked'],
-        last_seen=data['last_seen'],
+        last_checked=format_time(data['last_checked']),
+        last_seen=format_time(data['last_seen']),
     )
     return text
 
