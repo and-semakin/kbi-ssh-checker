@@ -1,6 +1,7 @@
 import os
 import time
-from datetime import datetime
+import dateutil.tz
+import datetime
 import telepot
 import paramiko
 import csv
@@ -10,8 +11,20 @@ import logging
 from telepot.loop import MessageLoop
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
+
+# local timezone
+localtz = dateutil.tz.tzlocal()
+
 # status dictionary, stores info about hosts and availability
 status = {}
+
+
+# get current time
+def format_time(time=None):
+    if time is None:
+        return datetime.datetime.now(localtz).strftime('%d.%m.%y %H:%M:%S')
+    else:
+        return time.strftime('%d.%m.%y %H:%M:%S')
 
 
 # bot send message method to handle exceptions
@@ -22,7 +35,7 @@ def bot_send_message(bot, *args, **kwargs):
         print("{time}: Exception {type}: {message}".format(
             type=type(e),
             message=e.message,
-            time=str(datetime.now())
+            time=format_time()
         ))
         # try again
         time.sleep(5)
@@ -53,7 +66,7 @@ def handle(msg):
         chat_id=chat_id,
         chat_type=chat_type,
         text=msg['text'],
-        time=str(datetime.now())
+        time=format_time()
     ))
 
     if ((chat_type == 'private' and msg['text'] == '/status') or
@@ -104,7 +117,7 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                         print("{time}: [{comment}] {local_ip}:{local_port} -- OK".format(
                             local_ip=line['local_ip'],
                             local_port=line['local_port'],
-                            time=str(datetime.now()),
+                            time=format_time(),
                             comment=line['comment']
                         ))
                         available = True
@@ -115,7 +128,7 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                             local_ip=line['local_ip'],
                             local_port=line['local_port'],
                             i=i+1,
-                            time=str(datetime.now()),
+                            time=format_time(),
                             comment=line['comment']
                         ))
                         time.sleep(10)
@@ -128,9 +141,9 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                     status[ip_port] = {'last_seen': 'never'}
                 # update last seen if available
                 if available:
-                    status[ip_port]['last_seen'] = datetime.now()
+                    status[ip_port]['last_seen'] = datetime.datetime.now(localtz)
                 # insert or update data
-                status[ip_port]['last_checked'] = datetime.now()
+                status[ip_port]['last_checked'] = datetime.datetime.now(localtz)
                 if 'available' in status[ip_port]:
                     last_available = status[ip_port]['available']
                 else:

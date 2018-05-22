@@ -11,9 +11,10 @@ multidict==3.3.2
 paramiko==2.3.1
 pyasn1==0.3.7
 pycparser==2.18
-PyNaCl==1.2.0
+pynacl==1.2.0
+pysocks==1.6.8
+python-dateutil==2.7.3
 six==1.11.0
 telepot==12.6
 urllib3==1.22
 yarl==0.13.0
-PySocks==1.6.8
