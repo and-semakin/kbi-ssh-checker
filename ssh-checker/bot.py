@@ -34,7 +34,7 @@ def bot_send_message(bot, *args, **kwargs):
     except (ReadTimeoutError, ProtocolError) as e:
         print("{time}: Exception {type}: {message}".format(
             type=type(e),
-            message=e.message,
+            message=str(e),
             time=format_time()
         ))
         # try again
