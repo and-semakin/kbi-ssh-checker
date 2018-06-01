@@ -9,7 +9,7 @@ import threading
 import argparse
 import logging
 from telepot.loop import MessageLoop
-from urllib3.exceptions import ReadTimeoutError, ProtocolError
+from urllib3.exceptions import ReadTimeoutError, ProtocolError, MaxRetryError
 
 
 # local timezone
@@ -28,18 +28,21 @@ def format_time(time=None):
 
 
 # bot send message method to handle exceptions
-def bot_send_message(bot, *args, **kwargs):
+def bot_send_message(bot, retry=0, *args, **kwargs):
     try:
         bot.sendMessage(*args, **kwargs, parse_mode='Markdown')
-    except (ReadTimeoutError, ProtocolError) as e:
+    except (ReadTimeoutError, ProtocolError, MaxRetryError) as e:
         print("{time}: Exception {type}: {message}".format(
             type=type(e),
             message=str(e),
             time=format_time()
         ))
-        # try again
-        time.sleep(5)
-        bot.sendMessage(*args, **kwargs, parse_mode='Markdown')
+        # try three times
+        time.sleep(10)
+        if retry >= 3:
+            raise e
+        else:
+            bot_send_message(bot, retry=retry+1, *args, **kwargs)
 
 
 # format host status
