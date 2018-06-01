@@ -78,7 +78,7 @@ def handle(msg):
         text = "Current status:\n"
         for ip_port in status:
             text += host_status(ip_port)
-        bot_send_message(bot, chat_id, text)
+        bot_send_message(bot, chat_id=chat_id, text=text)
 
 
 # this method notifies Telegram users if any host became available or vice versa
@@ -88,8 +88,8 @@ def notify(ip_port, admins_info="admins.csv"):
     with open(admins_info, newline='') as file:
         reader = csv.DictReader(file, delimiter=';')
         for line in reader:
-            bot_send_message(bot, line['chat_id'], text)
-            time.sleep(5)
+            bot_send_message(bot, chat_id=line['chat_id'], text=text)
+            time.sleep(2)
 
 
 # this method runs in separate thread and check SSH hosts for availability
@@ -184,6 +184,16 @@ token = os.environ['TELEGRAM_TOKEN'] if 'TELEGRAM_TOKEN' in os.environ else args
 # start Telegram listener
 bot = telepot.Bot(token)
 print('Listening for queries in Telegram...')
+print('Notify master...')
+
+with open("admins.csv", newline='') as file:
+    reader = csv.DictReader(file, delimiter=';')
+    for line in reader:
+        if line['master'] == '1':
+            bot_send_message(bot, chat_id=line['chat_id'], text="I'm alive!")
+            time.sleep(2)
+
+
 MessageLoop(bot, handle).run_as_thread()
 
 # start SSH checker
