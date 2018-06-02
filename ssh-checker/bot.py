@@ -11,6 +11,14 @@ import logging
 from telepot.loop import MessageLoop
 from urllib3.exceptions import ReadTimeoutError, ProtocolError, MaxRetryError
 
+# logging
+log = logging.getLogger('kbi-dev-bot')
+log.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+log.addHandler(ch)
 
 # local timezone
 localtz = dateutil.tz.tzlocal()
@@ -32,17 +40,16 @@ def bot_send_message(bot, retry=0, *args, **kwargs):
     try:
         bot.sendMessage(*args, **kwargs, parse_mode='Markdown')
     except (ReadTimeoutError, ProtocolError, MaxRetryError) as e:
-        print("{time}: Exception {type}: {message}".format(
+        log.error("Exception {type}: {message}".format(
             type=type(e),
             message=str(e),
-            time=format_time()
         ))
         # try three times
         time.sleep(10)
         if retry >= 3:
             raise e
         else:
-            bot_send_message(bot, retry=retry+1, *args, **kwargs)
+            bot_send_message(bot, retry=retry + 1, *args, **kwargs)
 
 
 # format host status
@@ -65,16 +72,15 @@ def host_status(ip_port):
 # this method handles Telegram messages
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
-    print("{time}: Got new Telegram message: {chat_type}, chat_id {chat_id}, text \"{text}\"".format(
+    log.info("Got new Telegram message: {chat_type}, chat_id {chat_id}, text \"{text}\"".format(
         chat_id=chat_id,
         chat_type=chat_type,
         text=msg['text'],
-        time=format_time()
     ))
 
     if ((chat_type == 'private' and msg['text'] == '/status') or
-           ((chat_type == 'group' or chat_type == 'supergroup') and
-               msg['text'] == "/status@kbi_dev_bot")):
+            ((chat_type == 'group' or chat_type == 'supergroup') and
+             msg['text'] == "/status@kbi_dev_bot")):
         text = "Current status:\n"
         for ip_port in status:
             text += host_status(ip_port)
@@ -94,7 +100,7 @@ def notify(ip_port, admins_info="admins.csv"):
 
 # this method runs in separate thread and check SSH hosts for availability
 def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
-    print("Checking SSH availability...")
+    log.info("Checking SSH availability...")
 
     # infinite loop
     while 1:
@@ -117,28 +123,26 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
                             password='wrong_password')
                     # success, host is reachable because we've got auth exception
                     except paramiko.ssh_exception.AuthenticationException:
-                        print("{time}: [{comment}] {local_ip}:{local_port} -- OK".format(
+                        log.info("[{comment}] {local_ip}:{local_port} -- OK".format(
                             local_ip=line['local_ip'],
                             local_port=line['local_port'],
-                            time=format_time(),
                             comment=line['comment']
                         ))
                         available = True
                         break
                     # fail, host is unavailable
                     except:
-                        print("{time}: [{comment}] {local_ip}:{local_port} -- Resource unavailable ({i})".format(
+                        log.info("[{comment}] {local_ip}:{local_port} -- Resource unavailable ({i})".format(
                             local_ip=line['local_ip'],
                             local_port=line['local_port'],
-                            i=i+1,
-                            time=format_time(),
+                            i=i + 1,
                             comment=line['comment']
                         ))
                         time.sleep(10)
 
                 # key for status dictionary
                 ip_port = '{ip}:{port}'.format(ip=line['local_ip'],
-                    port=line['local_port'])
+                                               port=line['local_port'])
                 # create if key is not present
                 if not ip_port in status:
                     status[ip_port] = {'last_seen': 'never'}
@@ -164,7 +168,8 @@ def ssh_checker(sleep=300, hosts_info="hosts.csv", retries=3):
 def set_telepot_socks_proxy(url, username=None, password=None):
     from urllib3.contrib.socks import SOCKSProxyManager
     from telepot.api import _default_pool_params, _onetime_pool_params
-    telepot.api._onetime_pool_spec = (SOCKSProxyManager, dict(proxy_url=url, username=username, password=password, **_onetime_pool_params))
+    telepot.api._onetime_pool_spec = (
+    SOCKSProxyManager, dict(proxy_url=url, username=username, password=password, **_onetime_pool_params))
     telepot.api._pools['default'] = SOCKSProxyManager(url, username=username, password=password, **_default_pool_params)
 
 
@@ -183,8 +188,8 @@ token = os.environ['TELEGRAM_TOKEN'] if 'TELEGRAM_TOKEN' in os.environ else args
 
 # start Telegram listener
 bot = telepot.Bot(token)
-print('Listening for queries in Telegram...')
-print('Notify master...')
+log.info('Listening for queries in Telegram...')
+log.info('Notify master...')
 
 with open("admins.csv", newline='') as file:
     reader = csv.DictReader(file, delimiter=';')
@@ -193,15 +198,13 @@ with open("admins.csv", newline='') as file:
             bot_send_message(bot, chat_id=line['chat_id'], text="I'm alive!")
             time.sleep(2)
 
-
 MessageLoop(bot, handle).run_as_thread()
 
 # start SSH checker
 logging.getLogger("paramiko").setLevel(logging.CRITICAL)
-thr = threading.Thread(target=ssh_checker, args=(args.sleep, ))
+thr = threading.Thread(target=ssh_checker, args=(args.sleep,))
 thr.run()
 
 # keep the program running
 while 1:
     time.sleep(10)
-
