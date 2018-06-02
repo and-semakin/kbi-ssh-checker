@@ -72,15 +72,17 @@ def host_status(ip_port):
 # this method handles Telegram messages
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
-    log.info("Got new Telegram message: {chat_type}, chat_id {chat_id}, text \"{text}\"".format(
-        chat_id=chat_id,
+    username = msg['from']['username']
+    log.info("Got new Telegram message: {chat_type}, from user: @{username}, chat_id: {chat_id}, text: \"{text}\"".format(
         chat_type=chat_type,
+        username=username,
+        chat_id=chat_id,
         text=msg['text'],
     ))
 
     if ((chat_type == 'private' and msg['text'] == '/status') or
             ((chat_type == 'group' or chat_type == 'supergroup') and
-             msg['text'] == "/status@kbi_dev_bot")):
+             msg['text'] == "/status@{username}".format(username=bot_username))):
         text = "Current status:\n"
         for ip_port in status:
             text += host_status(ip_port)
@@ -187,10 +189,13 @@ args = parser.parse_args()
 token = os.environ['TELEGRAM_TOKEN'] if 'TELEGRAM_TOKEN' in os.environ else args.telegram_token
 
 # start Telegram listener
+log.info('Connecting to Telegram Bot API...')
 bot = telepot.Bot(token)
-log.info('Listening for queries in Telegram...')
-log.info('Notify master...')
 
+bot_username = bot.getMe()['username']
+log.info('Bot username is @{username}'.format(username=bot_username))
+
+log.info('Notifying master...')
 with open("admins.csv", newline='') as file:
     reader = csv.DictReader(file, delimiter=';')
     for line in reader:
@@ -198,6 +203,7 @@ with open("admins.csv", newline='') as file:
             bot_send_message(bot, chat_id=line['chat_id'], text="I'm alive!")
             time.sleep(2)
 
+log.info('Listening for queries in Telegram...')
 MessageLoop(bot, handle).run_as_thread()
 
 # start SSH checker
