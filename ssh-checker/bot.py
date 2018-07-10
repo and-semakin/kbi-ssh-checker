@@ -31,8 +31,10 @@ status = {}
 def format_time(time=None):
     if time is None:
         return datetime.datetime.now(localtz).strftime('%d.%m.%y %H:%M:%S')
-    else:
+    elif isinstance(time, datetime.datetime):
         return time.strftime('%d.%m.%y %H:%M:%S')
+    else:
+        return time
 
 
 # bot send message method to handle exceptions
